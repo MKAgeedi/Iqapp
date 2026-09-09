@@ -1,3 +1,21 @@
 {
-  "apps": {}
+  "apps": {
+    "app_mtui1so0_1l8xn": {
+      "id": "app_mtui1so0_1l8xn",
+      "name": "Send",
+      "icon": "",
+      "category": "بث مباشر",
+      "description": "",
+      "createdAt": 1788982637242,
+      "versions": [
+        {
+          "version": "1",
+          "link": "apks/app_mtui1so0_1l8xn_v1.apk",
+          "size": "17.7 MB",
+          "notes": "الإصدار الأول",
+          "date": "2026-09-09T19:37:17.242Z"
+        }
+      ]
+    }
+  }
 }
