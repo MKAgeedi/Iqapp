@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متجر التطبيقات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div class="brand">
+      <div class="brand-mark">📡</div>
+      <div class="brand-text">
+        <h1>متجر التطبيقات</h1>
+        <p id="app-count-label">جاري التحميل...</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="admin-header-actions" style="display:none; gap:8px;">
+        <button class="btn btn-ghost btn-icon-only" id="btn-update" title="تحديث تطبيق">🔄</button>
+        <button class="btn btn-primary" id="btn-add">+ إضافة تطبيق</button>
+      </div>
+      <button class="btn btn-ghost btn-icon-only" id="btn-admin-toggle" title="دخول وضع الإدارة">🔑</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <input id="search-input" type="text" placeholder="ابحث عن تطبيق...">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  </div>
+  <div class="cat-row" id="cat-row"></div>
+</header>
+
+<main>
+  <div id="content">
+    <div class="loading-row"><div class="spin"></div>جاري تحميل التطبيقات...</div>
+  </div>
+</main>
+
+<footer>
+  <span id="admin-footer" style="display:none;">
+    <button id="btn-reset">مسح جميع البيانات</button> ·
+    <button id="btn-logout">خروج من وضع الإدارة</button> ·
+    <button id="btn-forget-token">نسيان الرمز المحفوظ على هذا الجهاز</button>
+  </span>
+  <p style="font-size:10.5px; color:var(--text-dim); margin:4px 0 0;">📡 متجر تطبيقات — للمشرف فقط: زر 🔑 أعلى الصفحة</p>
+</footer>
+
+<!-- Detail overlay -->
+<div class="overlay" id="overlay-detail">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>تفاصيل التطبيق</h2>
+      <button class="close-x" data-close="overlay-detail">✕</button>
+    </div>
+    <div class="panel-body" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- Add app overlay -->
+<div class="overlay" id="overlay-add">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>إضافة تطبيق جديد</h2>
+      <button class="close-x" data-close="overlay-add">✕</button>
+    </div>
+    <div class="panel-body">
+      <form id="form-add">
+        <div class="field">
+          <label>اسم التطبيق</label>
+          <input type="text" id="add-name" required placeholder="مثال: مشغل الأقمار الصناعية">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>الأيقونة (إيموجي أو رابط صورة)</label>
+            <input type="text" id="add-icon" placeholder="📺 أو https://...">
+          </div>
+          <div class="field">
+            <label>الفئة</label>
+            <select id="add-category">
+              <option>بث مباشر</option>
+              <option>تلفزيون</option>
+              <option>أدوات</option>
+              <option>ألعاب</option>
+              <option>وسائط</option>
+              <option>أخرى</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>الوصف</label>
+          <textarea id="add-desc" placeholder="وصف مختصر عن التطبيق ووظيفته"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>رقم الإصدار الأول</label>
+            <input type="text" id="add-version" required placeholder="مثال: 1.0.0">
+          </div>
+          <div class="field">
+            <label>حجم الملف</label>
+            <input type="text" id="add-size" placeholder="مثال: 24 MB">
+          </div>
+        </div>
+        <div class="field">
+          <label>رابط تحميل ملف APK</label>
+          <input type="url" id="add-link" required placeholder="https://...apk">
+          <p class="hint">الصق رابط تحميل مباشر (من GitHub Releases أو Google Drive أو أي مستضيف آخر). هذا الموقع لا يستضيف ملفات APK نفسها، فقط بيانات التطبيقات وروابطها، ويحفظها مباشرة داخل ملف apps.json في مستودعك على GitHub.</p>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">حفظ التطبيق</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Choose app to update -->
+<div class="overlay" id="overlay-choose">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>اختر تطبيقًا لتحديثه</h2>
+      <button class="close-x" data-close="overlay-choose">✕</button>
+    </div>
+    <div class="panel-body" id="choose-body"></div>
+  </div>
+</div>
+
+<!-- Update version overlay -->
+<div class="overlay" id="overlay-update">
+  <div class="panel">
+    <div class="panel-head">
+      <h2 id="update-title">إضافة إصدار جديد</h2>
+      <button class="close-x" data-close="overlay-update">✕</button>
+    </div>
+    <div class="panel-body">
+      <form id="form-update">
+        <div class="field-row">
+          <div class="field">
+            <label>رقم الإصدار الجديد</label>
+            <input type="text" id="up-version" required placeholder="مثال: 1.1.0">
+          </div>
+          <div class="field">
+            <label>حجم الملف</label>
+            <input type="text" id="up-size" placeholder="مثال: 26 MB">
+          </div>
+        </div>
+        <div class="field">
+          <label>رابط تحميل ملف APK</label>
+          <input type="url" id="up-link" required placeholder="https://...apk">
+        </div>
+        <div class="field">
+          <label>ملاحظات التحديث (ما الجديد؟)</label>
+          <textarea id="up-notes" placeholder="مثال: إصلاح مشاكل التشغيل، تحسين السرعة"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">نشر التحديث</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
