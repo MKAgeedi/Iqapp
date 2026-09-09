@@ -328,12 +328,27 @@ function render(){
           <h3>${escapeHTML(a.name)}</h3>
           <div class="meta-line"><span class="badge">v${lv ? escapeHTML(lv.version) : '—'}</span></div>
           <div class="meta-line">${escapeHTML(a.category||'أخرى')}${lv && lv.size ? ' · ' + escapeHTML(lv.size) : ''}</div>
+          <div class="card-actions">
+            <a class="card-link dl" href="${lv?lv.link:'#'}" download target="_blank" rel="noopener" data-app-link>تحميل التطبيق</a>
+            <span class="dot">·</span>
+            <a class="card-link prev" href="#" data-app-prev="${a.id}">نسخ سابقة</a>
+          </div>
         </div>`;
       }).join('')}
     </div>
   `;
   contentEl.querySelectorAll('.card').forEach(c=>{
     c.addEventListener('click', ()=> openDetail(c.dataset.id));
+  });
+  contentEl.querySelectorAll('[data-app-link]').forEach(link=>{
+    link.addEventListener('click', (e)=> e.stopPropagation());
+  });
+  contentEl.querySelectorAll('[data-app-prev]').forEach(link=>{
+    link.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      e.preventDefault();
+      openDetail(link.dataset.appPrev);
+    });
   });
 }
 
