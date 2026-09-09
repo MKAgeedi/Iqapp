@@ -82,30 +82,31 @@ async function loadData(){
 }
 
 /* ============================================================
-   الكتابة (للمشرف فقط): عبر GitHub Contents API باستخدام التوكن
+   أدوات عامة للتعامل مع أي ملف داخل المستودع عبر GitHub Contents API
    ============================================================ */
-async function githubGetFile(){
-  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`;
-  const res = await fetch(url, {
+function buildContentsUrl(path){
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  return `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${encoded}`;
+}
+
+async function ghApiGetFile(path){
+  const res = await fetch(buildContentsUrl(path), {
     headers: {
       'Authorization': `token ${adminToken}`,
       'Accept': 'application/vnd.github+json'
     }
   });
+  if(res.status === 404) return null;
   if(!res.ok){
-    throw new Error(res.status === 404 ? 'ملف apps.json غير موجود في المستودع (تأكد إنه مرفوع بجذر المستودع)' : 'تعذّر الاتصال بالمستودع — تحقق من الرمز والصلاحيات');
+    throw new Error('تعذّر الاتصال بالمستودع — تحقق من الرمز والصلاحيات');
   }
   return res.json();
 }
 
-async function githubPutFile(newDataObj, sha, message){
-  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`;
-  const body = {
-    message,
-    content: b64EncodeUnicode(JSON.stringify(newDataObj, null, 2)),
-    sha
-  };
-  const res = await fetch(url, {
+async function ghApiPutFile(path, base64Content, message, sha){
+  const body = { message, content: base64Content };
+  if(sha) body.sha = sha;
+  const res = await fetch(buildContentsUrl(path), {
     method: 'PUT',
     headers: {
       'Authorization': `token ${adminToken}`,
@@ -116,15 +117,74 @@ async function githubPutFile(newDataObj, sha, message){
   });
   if(!res.ok){
     const errBody = await res.json().catch(()=>({}));
-    throw new Error(errBody.message || 'فشل حفظ التغييرات على GitHub');
+    throw new Error(errBody.message || 'فشل حفظ الملف على GitHub');
   }
   return res.json();
 }
 
+async function verifyAdminAccess(){
+  const meta = await ghApiGetFile(CONFIG.dataPath);
+  if(!meta) throw new Error('ملف apps.json غير موجود في المستودع (تأكد إنه مرفوع بجذر المستودع)');
+  return meta;
+}
+
 async function commitData(newDataObj, message){
-  const file = await githubGetFile();
-  await githubPutFile(newDataObj, file.sha, message);
+  const existing = await ghApiGetFile(CONFIG.dataPath);
+  await ghApiPutFile(
+    CONFIG.dataPath,
+    b64EncodeUnicode(JSON.stringify(newDataObj, null, 2)),
+    message,
+    existing ? existing.sha : undefined
+  );
   DATA = newDataObj;
+}
+
+/* ============================================================
+   رفع ملف APK مباشرة إلى مجلد apks/ داخل المستودع
+   ============================================================ */
+function sanitizeForFilename(s){
+  return (s || '').toString().trim().replace(/[^a-zA-Z0-9._-]+/g, '-') || 'file';
+}
+
+function formatBytes(bytes){
+  if(bytes < 1024*1024) return Math.round(bytes/1024) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(new Error('تعذّرت قراءة الملف'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadApkFile(file, appId, version){
+  const MAX_MB = 45;
+  if(file.size > MAX_MB * 1024 * 1024){
+    const ok = confirm(
+      `حجم الملف ${formatBytes(file.size)}، وهذا أكبر من الحد الموصى به (${MAX_MB} ميجابايت) للرفع المباشر عبر GitHub.\n` +
+      'قد تفشل العملية أو تستغرق وقتًا طويلًا. هل تريد المتابعة على أي حال؟'
+    );
+    if(!ok) throw new Error('تم إلغاء رفع الملف');
+  }
+  const base64 = await fileToBase64(file);
+  const path = `apks/${sanitizeForFilename(appId)}_v${sanitizeForFilename(version)}.apk`;
+  const existing = await ghApiGetFile(path);
+  await ghApiPutFile(path, base64, `رفع ملف: ${file.name}`, existing ? existing.sha : undefined);
+  return path;
+}
+
+/* يحدد رابط التنزيل: يرفع الملف إذا اختير، وإلا يستخدم الرابط الخارجي المدخل */
+async function resolveDownloadLink(fileInputEl, linkInputEl, appId, version){
+  const file = fileInputEl.files && fileInputEl.files[0];
+  if(file){
+    return await uploadApkFile(file, appId, version);
+  }
+  const link = linkInputEl.value.trim();
+  if(link) return link;
+  throw new Error('الرجاء رفع ملف APK أو إدخال رابط تحميل خارجي');
 }
 
 /* ============================================================
@@ -148,7 +208,7 @@ async function handleAdminToggle(){
     adminToken = savedToken;
     showToast('جاري التحقق...');
     try{
-      await githubGetFile();
+      await verifyAdminAccess();
       isAdmin = true;
       updateAdminUI();
       showToast('تم تفعيل وضع الإدارة');
@@ -174,7 +234,7 @@ async function setupTokenFirstTime(){
   adminToken = token.trim();
   showToast('جاري التحقق من الرمز...');
   try{
-    await githubGetFile();
+    await verifyAdminAccess();
     localStorage.setItem(LOCAL_TOKEN_KEY, adminToken);
     isAdmin = true;
     updateAdminUI();
@@ -333,29 +393,40 @@ el('form-add').addEventListener('submit', async (e)=>{
   if(!isAdmin){ showToast('وضع الإدارة غير مفعّل'); return; }
   const name = el('add-name').value.trim();
   const version = el('add-version').value.trim();
-  const link = el('add-link').value.trim();
-  if(!name || !version || !link) return;
+  if(!name || !version) return;
+
+  const fileEl = el('add-apk-file');
+  const linkEl = el('add-link');
+  const file = fileEl.files && fileEl.files[0];
+  if(!file && !linkEl.value.trim()){
+    showToast('الرجاء رفع ملف APK أو إدخال رابط تحميل خارجي');
+    return;
+  }
 
   const submitBtn = e.target.querySelector('button[type=submit]');
-  submitBtn.disabled = true; submitBtn.textContent = 'جاري الحفظ على GitHub...';
+  submitBtn.disabled = true;
+  submitBtn.textContent = file ? 'جاري رفع الملف...' : 'جاري الحفظ على GitHub...';
 
   const id = slugify(name);
-  const newData = JSON.parse(JSON.stringify(DATA));
-  newData.apps[id] = {
-    id, name,
-    icon: el('add-icon').value.trim(),
-    category: el('add-category').value,
-    description: el('add-desc').value.trim(),
-    createdAt: Date.now(),
-    versions: [{
-      version, link,
-      size: el('add-size').value.trim(),
-      notes: 'الإصدار الأول',
-      date: new Date().toISOString()
-    }]
-  };
-
   try{
+    const link = await resolveDownloadLink(fileEl, linkEl, id, version);
+    submitBtn.textContent = 'جاري حفظ بيانات التطبيق...';
+
+    const newData = JSON.parse(JSON.stringify(DATA));
+    newData.apps[id] = {
+      id, name,
+      icon: el('add-icon').value.trim(),
+      category: el('add-category').value,
+      description: el('add-desc').value.trim(),
+      createdAt: Date.now(),
+      versions: [{
+        version, link,
+        size: el('add-size').value.trim() || (file ? formatBytes(file.size) : ''),
+        notes: 'الإصدار الأول',
+        date: new Date().toISOString()
+      }]
+    };
+
     await commitData(newData, `إضافة تطبيق: ${name}`);
     showToast('تمت إضافة التطبيق ونشره على GitHub');
     e.target.reset();
@@ -410,21 +481,32 @@ el('form-update').addEventListener('submit', async (e)=>{
   const app = DATA.apps[currentAppId];
   if(!app) return;
   const version = el('up-version').value.trim();
-  const link = el('up-link').value.trim();
-  if(!version || !link) return;
+  if(!version) return;
+
+  const fileEl = el('up-apk-file');
+  const linkEl = el('up-link');
+  const file = fileEl.files && fileEl.files[0];
+  if(!file && !linkEl.value.trim()){
+    showToast('الرجاء رفع ملف APK أو إدخال رابط تحميل خارجي');
+    return;
+  }
 
   const submitBtn = e.target.querySelector('button[type=submit]');
-  submitBtn.disabled = true; submitBtn.textContent = 'جاري النشر على GitHub...';
-
-  const newData = JSON.parse(JSON.stringify(DATA));
-  newData.apps[currentAppId].versions.unshift({
-    version, link,
-    size: el('up-size').value.trim(),
-    notes: el('up-notes').value.trim(),
-    date: new Date().toISOString()
-  });
+  submitBtn.disabled = true;
+  submitBtn.textContent = file ? 'جاري رفع الملف...' : 'جاري النشر على GitHub...';
 
   try{
+    const link = await resolveDownloadLink(fileEl, linkEl, currentAppId, version);
+    submitBtn.textContent = 'جاري حفظ بيانات التحديث...';
+
+    const newData = JSON.parse(JSON.stringify(DATA));
+    newData.apps[currentAppId].versions.unshift({
+      version, link,
+      size: el('up-size').value.trim() || (file ? formatBytes(file.size) : ''),
+      notes: el('up-notes').value.trim(),
+      date: new Date().toISOString()
+    });
+
     await commitData(newData, `تحديث ${app.name} إلى v${version}`);
     showToast('تم نشر التحديث على GitHub');
     closeOverlay('overlay-update');
