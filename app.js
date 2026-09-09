@@ -4,10 +4,10 @@
 const CONFIG = {
   owner: 'MKAgeedi',                // اسم المستخدم/المنظمة على GitHub
   repo: 'Iqapp',                    // اسم المستودع
-  branch: 'main',                  // اسم الفرع الرئيسي (main أو master)
   dataPath: 'apps.json',           // اسم ملف البيانات (لا تغيّره إلا إذا غيّرت اسم الملف فعليًا)
   unlockWord: 'baghdad'            // الكلمة السريعة لفتح وضع الإدارة على هذا الجهاز بعد الإعداد الأول
 };
+/* ملاحظة: لا حاجة لتحديد اسم الفرع (main/master) — الموقع يستخدم الفرع الافتراضي للمستودع تلقائيًا */
 /* ============================================================ */
 
 const LOCAL_TOKEN_KEY = 'app-store-admin-token';
@@ -85,7 +85,7 @@ async function loadData(){
    الكتابة (للمشرف فقط): عبر GitHub Contents API باستخدام التوكن
    ============================================================ */
 async function githubGetFile(){
-  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}?ref=${CONFIG.branch}`;
+  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${CONFIG.dataPath}`;
   const res = await fetch(url, {
     headers: {
       'Authorization': `token ${adminToken}`,
@@ -93,7 +93,7 @@ async function githubGetFile(){
     }
   });
   if(!res.ok){
-    throw new Error(res.status === 404 ? 'ملف apps.json غير موجود في المستودع' : 'تعذّر الاتصال بالمستودع — تحقق من الرمز والصلاحيات');
+    throw new Error(res.status === 404 ? 'ملف apps.json غير موجود في المستودع (تأكد إنه مرفوع بجذر المستودع)' : 'تعذّر الاتصال بالمستودع — تحقق من الرمز والصلاحيات');
   }
   return res.json();
 }
@@ -103,8 +103,7 @@ async function githubPutFile(newDataObj, sha, message){
   const body = {
     message,
     content: b64EncodeUnicode(JSON.stringify(newDataObj, null, 2)),
-    sha,
-    branch: CONFIG.branch
+    sha
   };
   const res = await fetch(url, {
     method: 'PUT',
