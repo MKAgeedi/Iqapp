@@ -16,6 +16,23 @@
           "date": "2026-09-09T19:37:17.242Z"
         }
       ]
+    },
+    "app_mtuitabv_sctuf": {
+      "id": "app_mtuitabv_sctuf",
+      "name": "Aa",
+      "icon": "",
+      "category": "بث مباشر",
+      "description": "",
+      "createdAt": 1788983913645,
+      "versions": [
+        {
+          "version": "3",
+          "link": "apks/app_mtuitabv_sctuf_v3.apk",
+          "size": "17.7 MB",
+          "notes": "الإصدار الأول",
+          "date": "2026-09-09T19:58:33.646Z"
+        }
+      ]
     }
   }
 }
