@@ -105,9 +105,13 @@
           </div>
         </div>
         <div class="field">
-          <label>رابط تحميل ملف APK</label>
-          <input type="url" id="add-link" required placeholder="https://...apk">
-          <p class="hint">الصق رابط تحميل مباشر (من GitHub Releases أو Google Drive أو أي مستضيف آخر). هذا الموقع لا يستضيف ملفات APK نفسها، فقط بيانات التطبيقات وروابطها، ويحفظها مباشرة داخل ملف apps.json في مستودعك على GitHub.</p>
+          <label>ملف APK (رفع مباشر)</label>
+          <input type="file" id="add-apk-file" accept=".apk,application/vnd.android.package-archive">
+          <p class="hint">سيُرفع الملف مباشرة داخل مستودعك على GitHub. الحجم الموصى به أقل من 40 ميجابايت تقريبًا؛ الملفات الأكبر قد تفشل أو تستغرق وقتًا طويلًا حسب سرعة الإنترنت.</p>
+        </div>
+        <div class="field">
+          <label>أو رابط تحميل خارجي (اختياري إذا رفعت ملفًا أعلاه)</label>
+          <input type="url" id="add-link" placeholder="https://...apk">
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">حفظ التطبيق</button>
@@ -148,8 +152,12 @@
           </div>
         </div>
         <div class="field">
-          <label>رابط تحميل ملف APK</label>
-          <input type="url" id="up-link" required placeholder="https://...apk">
+          <label>ملف APK (رفع مباشر)</label>
+          <input type="file" id="up-apk-file" accept=".apk,application/vnd.android.package-archive">
+        </div>
+        <div class="field">
+          <label>أو رابط تحميل خارجي (اختياري إذا رفعت ملفًا أعلاه)</label>
+          <input type="url" id="up-link" placeholder="https://...apk">
         </div>
         <div class="field">
           <label>ملاحظات التحديث (ما الجديد؟)</label>
